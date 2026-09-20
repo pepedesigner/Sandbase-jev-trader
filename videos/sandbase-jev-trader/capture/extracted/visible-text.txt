@@ -1,0 +1,170 @@
+[span] SandBase Jev Trader
+[span] tick
+[span] 2,146
+[span] sim 300 ms · seed 20260920
+[span] stand-in model
+[span] last
+[span] 46 ms
+[span] avg
+[span] 44ms
+[span] 2,146
+[span] decisions
+[span] 801
+[span] fills
+[span] pos
+[span] short 923
+[span] +$684.06 (+0.68%)
+[span] uptime
+[span] 00:10:43
+[text] 343.02
+[text] 342.59
+[text] 342.17
+[text] 342.11
+[div] 342.11
+[span] Anthropic
+[span] ANTH/USD
+[span] short 923
+[span] p&l
+[span] +$684.06
+[span] +0.68%
+[div] Buying
+[span] 46 ms
+[span] conf
+[span] 0.99
+[div] WHICH SIDE THIS TICK?
+[span] BUY
+[span] buy
+[span] sell
+[span] 99%
+[span] conf 0.99
+[span] capped by the inventory limit
+[div] TOP OF BOOK
+[span] 342.18
+[span] 3,743
+[span] 342.17
+[span] 4,580
+[span] 342.16
+[span] 1,613
+[span] 342.15
+[span] 2,636
+[span] 342.14
+[span] 911
+[span] 342.08
+[span] 493
+[span] 342.07
+[span] 673
+[span] 342.06
+[span] 1,306
+[span] 342.05
+[span] 2,883
+[span] 342.04
+[span] 3,725
+[div] TAPE
+[span] 2,146
+[span] BUY
+[span] 0.99
+[span] 46ms
+[span] bid 200 @ 342.09 cap
+[span] #100263066
+[span] 2,145
+[span] SELL
+[span] 0.84
+[span] 26ms
+[span] FILL 200 @ 342.22
+[span] #100263065
+[span] 2,144
+[span] BUY
+[span] 0.86
+[span] 59ms
+[span] bid 200 @ 342.19 cap
+[span] #100263064
+[span] 2,143
+[span] SELL
+[span] 0.52
+[span] 44ms
+[span] ask 200 @ 342.16
+[span] #100263063
+[span] 2,142
+[span] BUY
+[span] 0.99
+[span] 52ms
+[span] FILL 200 @ 342.19
+[span] #100263062
+[span] 2,141
+[span] SELL
+[span] 0.97
+[span] 24ms
+[span] FILL 200 @ 342.26
+[span] #100263061
+[span] 2,140
+[span] SELL
+[span] 0.93
+[span] 30ms
+[span] FILL 200 @ 342.23
+[span] #100263060
+[span] 2,139
+[span] BUY
+[span] 1.00
+[span] 29ms
+[span] FILL 200 @ 342.30
+[span] #100263059
+[span] 2,138
+[span] SELL
+[span] 0.99
+[span] 23ms
+[span] ask 200 @ 342.37
+[span] #100263058
+[span] 2,137
+[span] SELL
+[span] 0.78
+[span] 22ms
+[span] FILL 200 @ 342.43
+[span] #100263057
+[span] 2,136
+[span] SELL
+[span] 0.90
+[span] 67ms
+[span] ask 200 @ 342.45
+[span] #100263056
+[span] 2,135
+[span] BUY
+[span] 0.62
+[span] 47ms
+[span] bid 200 @ 342.36
+[span] #100263055
+[span] 2,134
+[span] SELL
+[span] 0.80
+[span] 65ms
+[span] ask 200 @ 342.37
+[span] #100263054
+[span] 2,133
+[span] SELL
+[span] 0.83
+[span] 61ms
+[span] ask 200 @ 342.30
+[span] #100263053
+[span] 2,132
+[span] BUY
+[span] 0.94
+[span] 34ms
+[span] FILL 200 @ 342.35
+[span] #100263052
+[span] 2,131
+[span] SELL
+[span] 1.00
+[span] 58ms
+[span] ask 200 @ 342.51
+[span] #100263051
+[span] 2,130
+[span] BUY
+[span] 0.95
+[span] 19ms
+[span] FILL 200 @ 342.53
+[span] #100263050
+[span] 2,129
+[span] SELL
+[span] 0.67
+[span] 35ms
+[span] FILL 200 @ 342.53
+[span] #100263049

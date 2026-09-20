@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Jev Trader",
-  description: "One AI trade decision every Monad block.",
+  title: "SandBase Jev Trader",
+  description: "One AI trade decision every 300 ms tick, on a simulated Anthropic order book.",
 };
 
 export const viewport: Viewport = {

@@ -1,244 +1,187 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { config } from "./config";
-import { Market, type Book, type Fill, type Quote, type QuoteResult, type Side } from "./market";
-import type { Action, Decision, Model, TradeState } from "./model";
-import { TradeFeed, type MakerFill, type TradePrint } from "./trades";
+import type { DeskOrder, Exchange, TradeResult } from "./exchange";
+import type { Action, Book, Fill, Level, Quote, Side } from "./types";
+import type { Decision, Model, TradeState } from "./model";
 
-export interface BlockEvent {
-  block: number;
+export interface Totals {
+  ticks: number;
+  decisions: number;
+  quotes: number;
+  fills: number;
+  lateTicks: number;
+  volumeShares: number;
+  notional: number;
+  modelUsd: number;
+  realizedUsd: number;
+  pnlUsd: number;
+  pnlPct: number;
+}
+
+export interface TickEvent {
+  tick: number;
   ts: number;
   mid: number;
   bestBid: number;
   bestAsk: number;
   spreadBps: number;
-  decision: { action: Action; probabilities: Record<Action, number>; upIn10: number; latencyMs: number; late: boolean } | null;
-  /** The order this block put on the book. */
+  decision: { action: Action; probabilities: Record<Action, number>; latencyMs: number; late: boolean } | null;
+  /** The order this tick put on the book. */
   quote: Quote | null;
-  /** Maker fills that landed in this block (aggregated), attached when the trade logs for it arrive. */
+  /** A taker hit our resting order this tick (aggregated). */
   fill: Fill | null;
-  /** Our size known to be resting on the book after this block's order. */
-  resting: { bidMon: number; askMon: number };
-  position: { side: "long" | "short" | "flat"; size: number; entryPrice: number | null; unrealizedUsd: number; unrealizedMon: number };
+  /** Top of the book, for the ladder. */
+  book: { bids: Level[]; asks: Level[] };
+  /** Our size still resting after this tick's order and flow. */
+  resting: { bidShares: number; askShares: number };
+  position: { side: "long" | "short" | "flat"; size: number; entryPrice: number | null; unrealizedUsd: number };
   totals: Totals;
 }
 
-/** Per-block latency: the book read, and read + decide + send end to end. */
-export interface Timing { readMs: number; loopMs: number }
+/** Per-tick latency: the whole loop, plus the model call on its own. */
+export interface Timing { loopMs: number; modelMs: number }
 
-export interface Totals {
-  blocks: number;
-  decisions: number;
-  quotes: number;
-  fills: number;
-  reverted: number;
-  lateBlocks: number;
-  jevUsd: number;
-  gasMon: number;
-  gasUsd: number;
-  realizedUsd: number;
-  pnlUsd: number;
-  pnlMon: number;
-  pnlPct: number;
-}
-
-interface Resting { side: Side; price: number; size: number; block: number }
+interface Resting extends DeskOrder { tick: number }
 
 /**
- * Every block: read the book, ask the model buy or sell, and post one post-only limit order on
- * that side (`quoteInsideTicks` inside the touch), cancelling whatever we had resting. One request
- * in flight; a block that arrives while the previous one is still running is emitted as late.
+ * Every tick: read the book, ask the model buy or sell, and post one post-only
+ * limit order on that side (`quoteInsideTicks` inside the touch), replacing
+ * whatever we had resting. One decision in flight; a tick that arrives while the
+ * previous one is still running is emitted as late.
  *
- * Live sends are fire-and-forget: the block event carries the quote as `sent`; its receipt
- * (`placed` with an order id, or `reverted`) is applied when it turns up on a later block. Fills
- * come from the Trade log feed: a taker hit one of our resting orders. Dry runs simulate both:
- * the order rests for one block and fills when a real print crosses its price.
+ * Being inside the touch puts us at the front of the queue on our side, so
+ * takers hit us before the levels behind us: that is the whole edge. It also
+ * means we are picked off whenever the price moves through us, which the P&L
+ * shows plainly rather than hiding.
  */
 export class Trader {
-  readonly history: BlockEvent[] = [];
+  readonly history: TickEvent[] = [];
   private mids: number[] = [];
   private busy = false;
-  private lastBook: Book | null = null;
-  private trades: TradeFeed | null = null;
-  /** Orders we know are resting on the book (live: from receipts; dry run: last block's simulated order). */
-  private orders = new Map<number, Resting>();
-  /** Live quotes sent but not yet confirmed; they may become resting orders, so they count toward the cap. */
-  private inflight = new Map<string, Quote>();
-  private simId = 0;
-  private position = { mon: 0, costUsd: 0 }; // signed inventory and its cost basis
-  private totals: Totals = { blocks: 0, decisions: 0, quotes: 0, fills: 0, reverted: 0, lateBlocks: 0, jevUsd: 0, gasMon: 0, gasUsd: 0, realizedUsd: 0, pnlUsd: 0, pnlMon: 0, pnlPct: 0 };
+  private order: Resting | null = null;
+  /** Order ids come off a venue-wide sequence, so they do not start at 1. */
+  private nextOrderId = 100_000_000 + (config.seed % 10_000_000);
+  private position = { shares: 0, costUsd: 0 }; // signed inventory and its cost basis
+  private totals: Totals = {
+    ticks: 0, decisions: 0, quotes: 0, fills: 0, lateTicks: 0,
+    volumeShares: 0, notional: 0, modelUsd: 0, realizedUsd: 0, pnlUsd: 0, pnlPct: 0,
+  };
 
   constructor(
-    private market: Market,
+    private exchange: Exchange,
     private model: Model,
-    private onEvent: (e: BlockEvent, timing?: Timing) => void,
-    private onFill: (block: number, fill: Fill) => void = () => {},
-    private onQuote: (block: number, quote: Quote) => void = () => {},
+    private onEvent: (e: TickEvent, timing?: Timing) => void,
   ) {
     mkdirSync("data", { recursive: true });
   }
 
-  /** Call once the market params are known. Without it `trades` in the state is all zeros and no fills are ever seen. */
-  attachTradeFeed(sizeDec: number) {
-    this.trades = new TradeFeed({ market: config.market, url: config.readRpcUrl, sizeDec, maker: this.market.address });
-  }
-
-  async onBlock(block: number) {
-    this.totals.blocks++;
-    this.confirmPending(block); // off the hot path: receipts for earlier blocks' sends
-    if (this.totals.blocks % config.refreshBlocks === 0) this.market.refresh().catch(() => {}); // fee estimate + margin + vault check
+  async onTick(tick: number, book: Book) {
+    this.totals.ticks++;
     if (this.busy) {
-      this.totals.lateBlocks++;
-      if (this.lastBook) this.emit(block, this.lastBook, null, null, true);
+      this.totals.lateTicks++;
+      this.emit(tick, book, null, null, null, true);
       return;
     }
     this.busy = true;
     const t0 = performance.now();
     try {
-      const book = await this.market.readBook();
-      const readMs = performance.now() - t0;
-      this.lastBook = book;
       this.mids.push(book.mid);
       if (this.mids.length > 400) this.mids.shift();
-      this.trades?.poll(block).then(() => this.harvest()); // off the hot path: eth_getLogs for prints (and our fills) since the last poll
 
-      const decision = await this.model.decide(this.buildState(block, book));
+      const decision = await this.model.decide(this.buildState(tick, book));
+      this.totals.decisions++;
+      this.totals.modelUsd += (decision.inputTokens / 1e6) * 3;
+
       const wanted: Side = decision.action === "sell" ? "sell" : "buy";
       const other: Side = wanted === "buy" ? "sell" : "buy";
-      // The position cap (and, live, margin funds) can only pick the reducing side. The probabilities still show the model's call.
-      const side: Side | null = this.allowed(wanted, book) ? wanted : this.allowed(other, book) ? other : null;
-      this.totals.decisions++;
-      this.totals.jevUsd += (decision.inputTokens / 1e6) * config.jevUsdPerMTok;
+      // The inventory cap can only pick the reducing side. The probabilities still show the model's call.
+      const side: Side | null = this.allowed(wanted) ? wanted : this.allowed(other) ? other : null;
 
       let quote: Quote | null = null;
       if (side) {
         decision.action = side;
-        const cancel = [...this.orders.keys()].filter((id) => id > 0); // simulated orders have negative ids
-        quote = await this.market.send(block, side, config.tradeSizeMon, book, cancel, side !== wanted);
+        quote = this.post(tick, side, book, side !== wanted);
         this.totals.quotes++;
-        if (quote.status === "sim") {
-          this.orders.clear(); // the simulated cancel
-          this.orders.set(--this.simId, { side, price: quote.price, size: quote.size, block });
-        } else if (quote.txHash) {
-          this.inflight.set(quote.txHash, quote);
-        }
       }
-      this.emit(block, book, decision, quote, false, { readMs: Math.round(readMs), loopMs: Math.round(performance.now() - t0) });
+
+      // The tick's flow runs after we post, so this order is live for it. When we
+      // posted nothing the previous order stays resting, exactly as it would on a
+      // real book.
+      const result = this.exchange.trade(this.order);
+      this.settle(result);
+
+      this.emit(tick, book, decision, quote, result.fill, false, {
+        loopMs: Math.round(performance.now() - t0),
+        modelMs: Math.round(decision.latencyMs),
+      });
     } catch (e) {
-      console.error(`block ${block}:`, (e as Error).message);
+      console.error(`tick ${tick}:`, (e as Error).message);
     } finally {
       this.busy = false;
     }
   }
 
-  /** One eth_getTransactionReceipt per in-flight tx, in parallel with this block's decision. */
-  private confirmPending(block: number) {
-    this.market.pollPending(block).then((results) => {
-      for (const r of results) this.applyQuoteResult(r);
-    }).catch(() => {});
+  /** Where this tick's order rests: `quoteInsideTicks` inside the touch, never crossing. */
+  quotePrice(side: Side, book: Book): number {
+    const step = config.quoteInsideTicks * config.tickSize;
+    let p = side === "buy" ? book.bid + step : book.ask - step;
+    if (side === "buy" && p >= book.ask) p = book.bid;
+    if (side === "sell" && p <= book.bid) p = book.ask;
+    return round(p, 4);
   }
 
-  private applyQuoteResult({ block, quote, canceled }: QuoteResult) {
-    if (quote.txHash) this.inflight.delete(quote.txHash);
-    this.totals.gasMon += quote.gasMon; // charged on reverts too
-    if (quote.status === "reverted") this.totals.reverted++;
-    for (const id of canceled) this.orders.delete(id);
-    if (quote.status === "placed" && quote.orderId !== null) this.orders.set(quote.orderId, { side: quote.side, price: quote.price, size: quote.size, block });
-    const e = this.history.find((h) => h.block === block);
-    if (e) e.quote = quote;
-    this.onQuote(block, quote);
+  /** Cancel what is resting, post one post-only order on `side`. */
+  private post(tick: number, side: Side, book: Book, capped: boolean): Quote {
+    const cancel = this.order ? [this.order.id] : [];
+    const id = ++this.nextOrderId;
+    this.order = { id, side, price: this.quotePrice(side, book), size: config.tradeSize, tick };
+    return { side, price: this.order.price, size: this.order.size, orderId: id, cancel, capped };
   }
 
-  /** After each trade-log poll: apply our maker fills (live) or simulate them against the new prints (dry run). */
-  private harvest() {
-    if (!this.trades) return;
-    const prints = this.trades.drainPrints();
-    const fills: Fill[] = this.market.wallet ? this.liveFills(this.trades.drainFills()) : this.simFills(prints);
-    if (!fills.length) return;
-    const byBlock = new Map<number, Fill[]>();
-    for (const f of fills) {
-      this.applyFill(f);
-      const b = (f as Fill & { block: number }).block;
-      byBlock.set(b, [...(byBlock.get(b) ?? []), f]);
-    }
-    for (const [block, fs] of byBlock) {
-      const fill = aggregate(fs);
-      const e = this.history.find((h) => h.block === block);
-      if (e) e.fill = fill;
-      this.onFill(block, fill);
-    }
+  /** Apply the tick's flow: shrink or clear our order, and book the fill. */
+  private settle(result: TradeResult) {
+    this.order = result.resting ? { ...result.resting, tick: this.order?.tick ?? 0 } : null;
+    if (result.fill) this.applyFill(result.fill);
   }
 
-  private liveFills(raw: MakerFill[]): (Fill & { block: number })[] {
-    const out: (Fill & { block: number })[] = [];
-    for (const f of raw) {
-      const o = this.orders.get(f.orderId);
-      if (f.updatedSize <= 0) this.orders.delete(f.orderId);
-      else if (o) o.size = f.updatedSize;
-      out.push({ side: f.side, size: f.size, price: f.price, txHash: f.txHash, orderId: f.orderId, simulated: false, block: f.block });
-    }
-    return out;
+  private restingShares(side: Side) {
+    return this.order && this.order.side === side ? this.order.size : 0;
   }
 
-  /**
-   * A simulated order placed at block N is on the book from N+1. A taker sell printing at or below
-   * our bid (or a taker buy at or above our ask) would have taken us first: fill up to the print's size.
-   */
-  private simFills(prints: TradePrint[]): (Fill & { block: number })[] {
-    const out: (Fill & { block: number })[] = [];
-    for (const p of prints) {
-      for (const [id, o] of this.orders) {
-        if (p.block <= o.block || o.size <= 0) continue;
-        const hit = o.side === "buy" ? p.side === "sell" && p.price <= o.price : p.side === "buy" && p.price >= o.price;
-        if (!hit) continue;
-        const size = Math.min(o.size, p.size);
-        o.size -= size;
-        if (o.size <= 1e-9) this.orders.delete(id);
-        out.push({ side: o.side, size, price: o.price, txHash: null, orderId: id, simulated: true, block: p.block });
-      }
-    }
-    return out;
+  /** Would this order, plus what is already resting on its side, keep us inside the cap? */
+  private allowed(side: Side) {
+    const size = config.tradeSize;
+    const exposure =
+      side === "buy"
+        ? this.position.shares + this.restingShares("buy") + size
+        : this.position.shares - this.restingShares("sell") - size;
+    return Math.abs(exposure) <= config.maxPosition;
   }
 
-  private restingMon(side: Side) {
-    let mon = 0;
-    for (const o of this.orders.values()) if (o.side === side) mon += o.size;
-    for (const q of this.inflight.values()) if (q.side === side) mon += q.size;
-    return mon;
-  }
-
-  /** Would this order, and everything already resting on its side, keep us inside the cap and (live) inside margin funds? */
-  private allowed(side: Side, book: Book) {
-    const size = config.tradeSizeMon;
-    const exposure = side === "buy" ? this.position.mon + this.restingMon("buy") + size : this.position.mon - this.restingMon("sell") - size;
-    if (Math.abs(exposure) > config.maxPositionMon) return false;
-    if (!this.market.wallet) return true;
-    // Kuru debits margin when an order is placed, so the balance already excludes what is resting.
-    return side === "buy" ? this.market.margin.usdc >= size * book.ask : this.market.margin.mon >= size;
-  }
-
-  private buildState(block: number, book: Book): TradeState {
-    const m = this.mids, n = m.length, H = config.horizonBlocks;
+  private buildState(tick: number, book: Book): TradeState {
+    const m = this.mids;
+    const n = m.length;
+    const H = config.horizonTicks;
     const ret = (k: number) => (n > k ? ((m[n - 1]! - m[n - 1 - k]!) / m[n - 1 - k]!) * 10_000 : 0);
-    const sampled = m.slice(-H).filter((_, i, a) => (a.length - 1 - i) % 5 === 0); // every 5th block, newest included
-    const lvl = (l: [number, number]) => `${l[0].toFixed(6)} x ${round(l[1], 1)}`;
-    const empty = { count: 0, buyMon: 0, sellMon: 0, cvdMon: 0, vwap: null, lastPrice: null, lastSide: null };
+    const sampled = m.slice(-H).filter((_, i, a) => (a.length - 1 - i) % 5 === 0); // every 5th tick, newest included
+    const lvl = (l: Level) => `${l.price.toFixed(2)} x ${Math.round(l.size)}`;
     const depth: TradeState["depth"] = {};
-    for (const [k, v] of Object.entries(book.depthBps)) depth[k + "bps"] = { bid: round(v.bid, 1), ask: round(v.ask, 1) };
+    for (const [k, v] of Object.entries(book.depthBps)) depth[k + "bps"] = { bid: round(v.bid, 0), ask: round(v.ask, 0) };
     return {
-      market: "MON-USDC",
-      block,
-      horizonBlocks: H,
-      blockMs: 300,
+      symbol: config.symbol,
+      tick,
+      horizonTicks: H,
+      tickMs: config.tickMs,
       mid: book.mid,
       spreadBps: round(book.spreadBps, 2),
       bookImbalance: round(book.imbalance, 3),
       depth,
       book: { bids: book.levels.bids.map(lvl), asks: book.levels.asks.map(lvl) },
       returnsBps: { last1: round(ret(1), 2), last5: round(ret(5), 2), last20: round(ret(20), 2), last100: round(ret(100), 2) },
-      recentMids: sampled.map((x) => x.toFixed(6)).join(" "),
-      trades: this.trades ? this.trades.summary(H, block) : empty,
-      recentTrades: (this.trades?.recent(10) ?? []).map((t) => `${t.block} ${t.side} ${round(t.size, 1)} @ ${t.price.toFixed(6)}`),
-      allowed: { buy: this.allowed("buy", book), sell: this.allowed("sell", book) },
+      recentMids: sampled.map((x) => x.toFixed(2)).join(" "),
+      trades: this.exchange.summary(H, tick),
+      recentTrades: this.exchange.recent(10).map((t) => `${t.tick} ${t.side} ${Math.round(t.size)} @ ${t.price.toFixed(2)}`),
+      allowed: { buy: this.allowed("buy"), sell: this.allowed("sell") },
     };
   }
 
@@ -246,62 +189,74 @@ export class Trader {
     if (f.size <= 0) return;
     const signed = f.side === "buy" ? f.size : -f.size;
     const p = this.position;
-    if (p.mon === 0 || Math.sign(p.mon) === Math.sign(signed)) {
-      p.costUsd += signed * f.price; // adding to position
+    if (p.shares === 0 || Math.sign(p.shares) === Math.sign(signed)) {
+      p.costUsd += signed * f.price; // adding to the position
     } else {
-      const closing = Math.min(Math.abs(signed), Math.abs(p.mon)) * Math.sign(signed);
-      const entry = p.costUsd / p.mon;
-      this.totals.realizedUsd += -closing * (f.price - entry); // closing part realizes pnl
+      const closing = Math.min(Math.abs(signed), Math.abs(p.shares)) * Math.sign(signed);
+      const entry = p.costUsd / p.shares;
+      this.totals.realizedUsd += -closing * (f.price - entry); // the closing part realizes P&L
       p.costUsd += closing * entry;
-      const remainder = signed - closing;
-      p.costUsd += remainder * f.price; // any flip opens the other way
+      p.costUsd += (signed - closing) * f.price; // any flip opens the other way
     }
-    p.mon += signed;
-    if (Math.abs(p.mon) < 1e-9) { p.mon = 0; p.costUsd = 0; }
+    p.shares += signed;
+    if (Math.abs(p.shares) < 1e-9) {
+      p.shares = 0;
+      p.costUsd = 0;
+    }
     this.totals.fills++;
+    this.totals.volumeShares += f.size;
+    this.totals.notional += f.size * f.price;
   }
 
-  private entryPrice() { return this.position.mon ? this.position.costUsd / this.position.mon : null; }
-  private unrealizedUsd(mid: number) { return this.position.mon ? this.position.mon * (mid - this.entryPrice()!) : 0; }
+  private entryPrice() {
+    return this.position.shares ? this.position.costUsd / this.position.shares : null;
+  }
 
-  private emit(block: number, book: Book, decision: Decision | null, quote: Quote | null, late: boolean, timing?: Timing) {
+  private emit(tick: number, book: Book, decision: Decision | null, quote: Quote | null, fill: Fill | null, late: boolean, timing?: Timing) {
     const t = this.totals;
-    t.gasUsd = t.gasMon * book.mid;
-    const unrealized = this.unrealizedUsd(book.mid);
-    t.pnlUsd = t.realizedUsd + unrealized - t.gasUsd;
-    t.pnlMon = t.pnlUsd / book.mid;
+    const unrealized = this.position.shares ? this.position.shares * (book.mid - this.entryPrice()!) : 0;
+    t.pnlUsd = t.realizedUsd + unrealized;
     t.pnlPct = (t.pnlUsd / config.bankrollUsd) * 100;
-    const size = Math.abs(this.position.mon);
-    const event: BlockEvent = {
-      block, ts: Date.now(), mid: book.mid, bestBid: book.bid, bestAsk: book.ask, spreadBps: round(book.spreadBps, 2),
+
+    const event: TickEvent = {
+      tick,
+      ts: Date.now(),
+      mid: round(book.mid, 4),
+      bestBid: round(book.bid, 2),
+      bestAsk: round(book.ask, 2),
+      spreadBps: round(book.spreadBps, 2),
       decision: late
-        ? { action: "hold", probabilities: { buy: 0, sell: 0, hold: 1 }, upIn10: 0.5, latencyMs: 0, late: true }
-        : decision && { action: decision.action, probabilities: decision.probabilities, upIn10: decision.upIn10, latencyMs: Math.round(decision.latencyMs), late: false },
+        ? { action: "hold", probabilities: { buy: 0, sell: 0, hold: 1 }, latencyMs: 0, late: true }
+        : decision && { action: decision.action, probabilities: decision.probabilities, latencyMs: Math.round(decision.latencyMs), late: false },
       quote,
-      fill: null,
-      resting: { bidMon: round(this.restingMon("buy"), 1), askMon: round(this.restingMon("sell"), 1) },
+      fill,
+      book: book.levels,
+      resting: { bidShares: round(this.restingShares("buy"), 0), askShares: round(this.restingShares("sell"), 0) },
       position: {
-        side: this.position.mon > 0 ? "long" : this.position.mon < 0 ? "short" : "flat",
-        size, entryPrice: this.entryPrice(), unrealizedUsd: round(unrealized, 4), unrealizedMon: round(unrealized / book.mid, 4),
+        side: this.position.shares > 0 ? "long" : this.position.shares < 0 ? "short" : "flat",
+        size: Math.abs(this.position.shares),
+        entryPrice: this.entryPrice(),
+        unrealizedUsd: round(unrealized, 2),
       },
-      totals: { ...t, jevUsd: round(t.jevUsd, 6), gasMon: round(t.gasMon, 6), gasUsd: round(t.gasUsd, 6), realizedUsd: round(t.realizedUsd, 4), pnlUsd: round(t.pnlUsd, 4), pnlMon: round(t.pnlMon, 4), pnlPct: round(t.pnlPct, 3) },
+      totals: {
+        ...t,
+        volumeShares: round(t.volumeShares, 0),
+        notional: round(t.notional, 0),
+        modelUsd: round(t.modelUsd, 6),
+        realizedUsd: round(t.realizedUsd, 2),
+        pnlUsd: round(t.pnlUsd, 4),
+        pnlPct: round(t.pnlPct, 4),
+      },
     };
     this.history.push(event);
     if (this.history.length > config.historySize) this.history.shift();
-    appendFileSync("data/events.jsonl", JSON.stringify(event) + "\n");
+    // The tape is a convenience for offline review and for cutting video against
+    // real numbers; it is never allowed to take the trading loop down.
+    try {
+      appendFileSync("data/events.jsonl", JSON.stringify(event) + "\n");
+    } catch {}
     this.onEvent(event, timing);
   }
-}
-
-/** Several fills in one block become one: total size, size-weighted price, the side with more size. */
-function aggregate(fills: Fill[]): Fill {
-  const buy = fills.filter((f) => f.side === "buy").reduce((s, f) => s + f.size, 0);
-  const sell = fills.filter((f) => f.side === "sell").reduce((s, f) => s + f.size, 0);
-  const side: Side = buy >= sell ? "buy" : "sell";
-  const same = fills.filter((f) => f.side === side);
-  const size = same.reduce((s, f) => s + f.size, 0);
-  const price = same.reduce((s, f) => s + f.size * f.price, 0) / size;
-  return { side, size: round(size, 4), price, txHash: same[0]!.txHash, orderId: same[0]!.orderId, simulated: same[0]!.simulated };
 }
 
 const round = (x: number, d: number) => Math.round(x * 10 ** d) / 10 ** d;

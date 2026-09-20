@@ -32,9 +32,9 @@
   flex-direction: column;
 }
 
-/* right column: decision panel (fixed) + feed (fills, clips) */
+/* right column: decision panel + ladder (fixed) + tape (clips) */
 .right {
-  width: 470px;
+  width: 496px;
   flex: none;
   display: flex;
   flex-direction: column;

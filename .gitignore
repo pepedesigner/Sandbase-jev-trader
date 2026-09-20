@@ -1,3 +1,24 @@
 node_modules
 .env
+.env.local
 data/
+
+# capture takes: keep the take itself, drop the working screenshots
+video/takes/*.frames/
+video/takes/*.txt
+video/takes/*.png
+
+# macOS
+.DS_Store
+
+# local agent preferences, not project state
+.commandcode/
+
+# hyperframes working state (frame packets, contact sheets) and the silent
+# intermediate render, which is a subset of the scored cut next to it
+videos/*/.hyperframes/
+videos/*/renders/video.mp4
+
+# next build output
+web/.next/
+web/out/

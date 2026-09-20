@@ -16,7 +16,7 @@
   white-space: nowrap;
 }
 
-.block {
+.tick {
   font-family: var(--font-sans), Inter, system-ui, sans-serif;
   font-weight: 400;
   font-size: 13px;
@@ -40,9 +40,11 @@
   white-space: nowrap;
 }
 
-.wallet {
-  appearance: none;
-  background: transparent;
+/* there is no wallet: this listing does not exist, so say so */
+.sim {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
   border: 1px solid var(--border-2);
   border-radius: 999px;
   padding: 7px 14px;
@@ -50,18 +52,9 @@
   font-weight: 500;
   font-size: 12px;
   line-height: 1;
-  color: var(--ink);
+  color: var(--muted);
   white-space: nowrap;
-  cursor: pointer;
-  transition: border-color 0.2s, opacity 0.2s;
-}
-
-.wallet:hover:not(:disabled) {
-  border-color: var(--muted-2);
-}
-
-.wallet:disabled {
-  cursor: default;
+  font-variant-numeric: tabular-nums;
 }
 
 .badge {
@@ -83,7 +76,7 @@
     padding: 14px 16px;
   }
 
-  .block {
+  .tick {
     display: none;
   }
 
@@ -95,7 +88,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wallet,
   .badge {
     transition: none;
   }

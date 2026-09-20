@@ -1,36 +1,64 @@
 const env = (key: string, fallback?: string) => process.env[key] ?? fallback;
-const num = (key: string) => (env(key) ? Number(env(key)) : undefined);
+const num = (key: string, fallback: number) => (env(key) ? Number(env(key)) : fallback);
 
+/**
+ * The traded asset is fictional: Anthropic is private, so there is no real
+ * order book to read. Everything below drives a self-contained synthetic
+ * market, and the seed makes a session reproducible.
+ */
 export const config = {
-  rpcUrl: env("RPC_URL", "https://rpc.monad.xyz")!, // sends, receipts, nonce, gas estimation
-  readRpcUrl: env("READ_RPC_URL", "https://rpc.monad.xyz")!, // book reads + eth_blockNumber polling + trade logs
-  wsUrl: env("WS_URL"), // optional; polling backstop always runs
-  chainId: 143,
-  market: env("MARKET", "0x065C9d28E428A0db40191a54d33d5b7c71a9C394")!, // Kuru MON-USDC
-  /** Kuru MarginAccount this market settles against (slot 73 of the OrderBook proxy; verifiedMarket(market) is true). */
-  marginAccount: env("MARGIN_ACCOUNT", "0x2A68ba1833cDf93fa9Da1EEbd7F46242aD8E90c5")!,
-  privateKey: env("PRIVATE_KEY"),
-  dryRun: env("DRY_RUN") === "true" || !env("PRIVATE_KEY"),
-  tradeSizeMon: Number(env("TRADE_SIZE_MON", "200")), // Kuru MON-USDC minimum order is 200 MON
-  maxPositionMon: Number(env("MAX_POSITION_MON", "1000")),
-  bankrollUsd: Number(env("BANKROLL_USD", "100")), // used for pnlPct
-  /** Quote this many ticks inside the touch (0 = join the best bid/ask). Never crosses: clamps to the touch when the spread is too tight. */
-  quoteInsideTicks: Number(env("QUOTE_INSIDE_TICKS", "1")),
-  /** Startup deposits into the Kuru margin account, topped up to these balances. Limit orders draw from margin, not the wallet. */
-  marginMon: Number(env("MARGIN_MON", "600")),
-  marginUsdc: Number(env("MARGIN_USDC", "20")),
-  // Monad charges gas on the LIMIT, so never estimate per block: estimate once at init (or override) and hardcode.
-  gasLimit: num("GAS_LIMIT"),
-  gasLimitFallback: 350_000, // batchUpdate: one cancel + one post-only place measured at ~282k for the place alone
-  // EIP-1559 type-2 only. Effective price = base + priority, so a high static cap is free.
-  maxFeeGwei: Number(env("MAX_FEE_GWEI", "400")),
-  priorityFeeGwei: Number(env("PRIORITY_FEE_GWEI", "2")), // Monad hardcodes eth_maxPriorityFeePerGas at 2
-  pendingBlocks: 10, // give up on a tx with no receipt after this many blocks
-  refreshBlocks: 200, // how often to refresh the fee estimate, margin balances and the vault check
-  horizonBlocks: Number(env("HORIZON_BLOCKS", "100")), // the model is asked about the move over this many blocks (~30 s)
-  model: env("MODEL", "mock") as "mock" | "jev",
-  jevModelId: env("JEV_MODEL_ID", "jev-latest")!,
-  jevUsdPerMTok: 0.042,
-  port: Number(env("PORT", "3000")),
-  historySize: 1000,
+  seed: num("SEED", 20260920),
+  tickMs: num("TICK_MS", 300),
+
+  /** The desk's name. The instrument below is a separate thing: a fictional listing. */
+  product: env("PRODUCT", "SandBase Jev Trader")!,
+  symbol: env("SYMBOL", "ANTH")!,
+  company: env("COMPANY", "Anthropic")!,
+  tickSize: num("TICK_SIZE", 0.01),
+  startPrice: num("START_PRICE", 342),
+
+  /** Per-tick log-return sigma, in basis points. */
+  volBps: num("VOL_BPS", 1.7),
+  /** The drift flips sign every so often, so the tape trends instead of chopping. */
+  driftBps: num("DRIFT_BPS", 0.5),
+  driftFlipProb: num("DRIFT_FLIP_PROB", 0.012),
+  /** A news shock: rare, and much larger than the tick-to-tick noise. */
+  jumpProb: num("JUMP_PROB", 0.0016),
+  jumpBps: num("JUMP_BPS", 15),
+
+  /** Levels generated each side of the synthetic book. */
+  bookLevels: num("BOOK_LEVELS", 20),
+  /** Shares resting at the touch before the size ramp. */
+  touchSize: num("TOUCH_SIZE", 900),
+  /** Taker orders per tick (Poisson mean). */
+  flowRate: num("FLOW_RATE", 1.1),
+  /** Median taker order size, in shares. */
+  flowSize: num("FLOW_SIZE", 420),
+  /**
+   * How informed the taker flow is, 0..1. Resting depth carries the signal (see
+   * the book skew in exchange.ts); this is only the share of takers trading on
+   * it. Real flow is mostly uninformed, which is what makes quoting inside the
+   * touch pay for the spread instead of only paying for adverse selection.
+   */
+  flowLean: num("FLOW_LEAN", 0.45),
+  /** Net taker shares that push the mid by one tick. */
+  impactShares: num("IMPACT_SHARES", 2200),
+
+  /** Shares per order the trader posts, and the inventory cap it stays inside. */
+  tradeSize: num("TRADE_SIZE", 200),
+  maxPosition: num("MAX_POSITION", 1000),
+  bankrollUsd: num("BANKROLL_USD", 100_000),
+  /** Quote this many ticks inside the touch (0 joins the best bid/ask). Never crosses. */
+  quoteInsideTicks: num("QUOTE_INSIDE_TICKS", 1),
+  /** The model is asked about the move over this many ticks. */
+  horizonTicks: num("HORIZON_TICKS", 100),
+
+  model: env("MODEL", "stand-in") as "stand-in" | "claude",
+  anthropicApiKey: env("ANTHROPIC_API_KEY"),
+  claudeModel: env("CLAUDE_MODEL", "claude-sonnet-4-5")!,
+  /** Stand-in inference time, so the latency column reads like a real model. */
+  inferenceMs: num("INFERENCE_MS", 55),
+
+  port: num("PORT", 3000),
+  historySize: num("HISTORY_SIZE", 1000),
 };

@@ -1,0 +1,148 @@
+<template>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+      src: url('assets/fonts/inter-var.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Geist Mono';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+      src: url('assets/fonts/geist-mono-var.woff2') format('woff2');
+    }
+
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      color: #0A0A0A;
+      -webkit-font-smoothing: antialiased;
+    }
+    #root .f06-ground {
+      position: absolute;
+      inset: 0;
+      background: #F0EEE9;
+    }
+
+    /* one card at a time, all sharing the same centre anchor */
+    #root .f06-card {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 372px;
+      text-align: center;
+      opacity: 0;
+    }
+    #root .f06-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 30px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #8A5B0E;
+    }
+    #root .f06-label.is-ink { color: #6A6A62; }
+    #root .f06-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #C98A1B;
+      flex: none;
+    }
+    #root .f06-sub {
+      margin-top: 34px;
+      font-weight: 400;
+      font-size: 42px;
+      line-height: 1.4;
+      color: #77776F;
+    }
+    #root .f06-sub strong {
+      font-weight: 600;
+      color: #0A0A0A;
+    }
+
+    #root .f06-mark {
+      font-weight: 600;
+      font-size: 112px;
+      line-height: 1.06;
+      letter-spacing: -0.035em;
+    }
+    #root .f06-bars {
+      font-weight: 500;
+      letter-spacing: -0.06em;
+      margin-right: 0.16em;
+    }
+    #root .f06-line {
+      margin-top: 38px;
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 24px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #6A6A62;
+    }
+  </style>
+
+  <div
+    id="root"
+    data-composition-id="06-outro"
+    data-start="0"
+    data-duration="5"
+    data-width="1920"
+    data-height="1080"
+  >
+    <div class="clip f06-ground" data-start="0" data-duration="5" data-track-index="0"></div>
+
+    <div class="clip f06-cards" data-start="0" data-duration="5" data-track-index="1" style="position: absolute; inset: 0">
+      <div class="f06-card" id="f06-card1">
+        <div class="f06-label"><span class="f06-dot"></span>stand-in model</div>
+        <div class="f06-sub">No hosted model was connected for this run.</div>
+      </div>
+
+      <div class="f06-card" id="f06-card2">
+        <div class="f06-label is-ink">fictional ticker</div>
+        <div class="f06-sub"><strong>Anthropic is private.</strong> ANTH does not exist.</div>
+      </div>
+
+      <div class="f06-card" id="f06-card3">
+        <div class="f06-mark"><span class="f06-bars">&#8214;</span>SandBase Jev Trader</div>
+        <div class="f06-line">
+          <span>simulated market</span><span>real execution</span><span>source open</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+
+      // Card one (0.0-1.7s): one restrained settle, then it holds. That is the whole card.
+      tl.fromTo('#f06-card1', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.62, ease: 'power3.out' }, 0.06);
+
+      // Card two (1.7-3.3s): an instant hard cut at full opacity - no crossfade.
+      tl.set('#f06-card1', { opacity: 0 }, 1.68);
+      tl.fromTo('#f06-card2', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.62, ease: 'power3.out' }, 1.72);
+
+      // Card three (3.3-5.0s): the final cut, the lockup, and a hold to the last frame.
+      tl.set('#f06-card2', { opacity: 0 }, 3.28);
+      tl.fromTo('#f06-card3', { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, 3.32);
+
+      window.__timelines['06-outro'] = tl;
+      tl.seek(0);
+    })();
+  </script>
+</template>

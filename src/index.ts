@@ -1,41 +1,67 @@
 import { config } from "./config";
-import { startBlockFeed } from "./chain";
-import { Market } from "./market";
+import { Exchange } from "./exchange";
+import { startTickFeed } from "./feed";
 import { createModel } from "./model";
-import { Trader } from "./trader";
-import { log10 } from "./book";
 import { startServer } from "./server";
+import { Trader } from "./trader";
 
-const market = new Market();
-await market.init();
+const WARMUP_TICKS = Number(process.env.WARMUP_TICKS ?? 1800);
+
+const exchange = new Exchange();
 const model = createModel();
 
 const server = startServer(
-  { model: model.name, wallet: market.address, dryRun: config.dryRun, market: config.market, startedAt: Date.now() },
+  {
+    product: config.product,
+    model: model.name,
+    standIn: model.standIn,
+    symbol: config.symbol,
+    company: config.company,
+    seed: config.seed,
+    tickMs: config.tickMs,
+    tradeSize: config.tradeSize,
+    maxPosition: config.maxPosition,
+    bankrollUsd: config.bankrollUsd,
+    // the warm-up is simulated history, so uptime starts where the tape does
+    startedAt: Date.now() - WARMUP_TICKS * config.tickMs,
+  },
   () => trader.history,
 );
-const trader = new Trader(
-  market,
-  model,
-  (e, t) => {
-    server.broadcast(e);
-    if (e.decision && !e.decision.late) {
-      const p = e.decision.probabilities;
-      const q = e.quote;
-      const quote = !q ? " NO QUOTE (cap or funds on both sides)" : ` ${q.side.toUpperCase()} ${q.size} @ ${q.price.toFixed(6)}${q.capped ? " capped" : ""}${q.status === "sim" ? " (sim)" : ` cancel ${q.cancel.length} ${q.txHash}`}`;
-      console.log(`#${e.block} ${e.mid.toFixed(6)} b${(p.buy * 100).toFixed(0)} s${(p.sell * 100).toFixed(0)} ${e.decision.latencyMs}ms${quote} pnl $${e.totals.pnlUsd}${t ? ` · read ${t.readMs}ms loop ${t.loopMs}ms` : ""}`);
-    }
-  },
-  (block, fill) => {
-    server.broadcastFill(block, fill);
-    console.log(`#${block} FILL ${fill.side} ${fill.size} @ ${fill.price.toFixed(6)}${fill.simulated ? " (sim)" : ` order ${fill.orderId} ${fill.txHash}`}`);
-  },
-  (block, quote) => {
-    server.broadcastQuote(block, quote);
-    if (quote.status !== "placed") console.log(`#${block} ${quote.status.toUpperCase()} ${quote.side} @ ${quote.price.toFixed(6)} gas ${quote.gasMon.toFixed(6)} MON ${quote.txHash}`);
-  },
-);
-trader.attachTradeFeed(log10(market.params.sizePrecision));
 
-console.log(`jev-trader · model=${model.name} · post-only ${config.quoteInsideTicks} tick inside the touch · horizon ${config.horizonBlocks} blocks · ${config.dryRun ? "DRY RUN" : `wallet ${market.address}`} · market ${config.market} · read ${config.readRpcUrl} · :${config.port}`);
-startBlockFeed((block) => trader.onBlock(block));
+const trader = new Trader(exchange, model, (e, timing) => {
+  server.broadcast(e);
+  if (e.decision && !e.decision.late) {
+    const p = e.decision.probabilities;
+    const q = e.quote;
+    const quote = !q ? " no order (cap on both sides)" : ` ${q.side.toUpperCase()} ${q.size} @ ${q.price.toFixed(2)}${q.capped ? " capped" : ""}`;
+    const fill = e.fill ? ` FILL ${e.fill.side} ${e.fill.size} @ ${e.fill.price.toFixed(2)}` : "";
+    console.log(
+      `#${e.tick} ${e.mid.toFixed(2)} b${(p.buy * 100).toFixed(0)} s${(p.sell * 100).toFixed(0)} ${e.decision.latencyMs}ms${quote}${fill} pnl $${e.totals.pnlUsd}${timing ? ` · loop ${timing.loopMs}ms` : ""}`,
+    );
+  }
+});
+
+// Replay a stretch of the session before going live, so the chart, the counters
+// and the P&L are already populated on the first frame a viewer sees. Only the
+// stand-in can do this: a real model would need one network call per tick.
+if (WARMUP_TICKS > 0 && model.standIn) {
+  model.fast = true;
+  for (let i = 0; i < WARMUP_TICKS; i++) {
+    const book = exchange.beginTick();
+    await trader.onTick(i + 1, book);
+  }
+  model.fast = false;
+}
+
+console.log(
+  `${config.product.toLowerCase().replace(/\s+/g, "-")} · ${config.symbol} (${config.company}, fictional) · model=${model.name}${model.standIn ? " STAND-IN" : ""} · post-only ${config.quoteInsideTicks} tick inside the touch · horizon ${config.horizonTicks} ticks · seed ${config.seed} · warm-up ${WARMUP_TICKS} ticks · :${config.port}`,
+);
+
+startTickFeed(
+  (tick) => {
+    const book = exchange.beginTick();
+    trader.onTick(tick, book);
+  },
+  config.tickMs,
+  WARMUP_TICKS,
+);

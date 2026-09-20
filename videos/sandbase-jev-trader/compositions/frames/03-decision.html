@@ -1,0 +1,210 @@
+<template>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+      src: url('assets/fonts/inter-var.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Geist Mono';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+      src: url('assets/fonts/geist-mono-var.woff2') format('woff2');
+    }
+
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      color: #0A0A0A;
+      -webkit-font-smoothing: antialiased;
+    }
+    #root .f03-ground {
+      position: absolute;
+      inset: 0;
+      background: #F0EEE9;
+    }
+
+    /* the surface: a clipped window onto the 2x plate. A hoisted <video> would be
+       mounted ABOVE this sub-composition and would cover the callouts this frame
+       draws, so the surface is the still plate; frame 4 carries the same plate and
+       does the camera travel over it. */
+    #root .f03-viewport {
+      position: absolute;
+      left: 96px;
+      top: 150px;
+      width: 1280px;
+      height: 720px;
+      overflow: hidden;
+      border-radius: 20px;
+    }
+    #root .f03-plate {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1280px;
+      height: 720px;
+      transform-origin: 0% 0%;
+    }
+    #root .f03-card {
+      position: absolute;
+      left: 96px;
+      top: 150px;
+      width: 1280px;
+      height: 720px;
+      border: 1px solid #E5E4DF;
+      border-radius: 20px;
+      transform-origin: 50% 50%;
+    }
+
+    #root .f03-eyebrow {
+      position: absolute;
+      left: 98px;
+      top: 84px;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 23px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #6A6A62;
+      opacity: 0;
+    }
+
+    /* the viewfinder: a hairline box on the panel the line is talking about,
+       with four corner ticks so it reads as an instrument, not a highlight */
+    #root .f03-ring {
+      position: absolute;
+      left: 856px;
+      top: 228px;
+      width: 372px;
+      height: 106px;
+      border: 1.5px solid rgba(15, 169, 104, 0.85);
+      border-radius: 6px;
+      opacity: 0;
+      transform-origin: 50% 50%;
+    }
+    #root .f03-tick {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-color: #0FA968;
+      border-style: solid;
+      opacity: 0;
+    }
+    #root .f03-tick-tl { left: 856px; top: 228px; border-width: 3px 0 0 3px; }
+    #root .f03-tick-tr { left: 1216px; top: 228px; border-width: 3px 3px 0 0; }
+    #root .f03-tick-bl { left: 856px; top: 322px; border-width: 0 0 3px 3px; }
+    #root .f03-tick-br { left: 1216px; top: 322px; border-width: 0 3px 3px 0; }
+
+    /* leader line out of the ring, to the left, into the callout rail */
+    #root .f03-leader {
+      position: absolute;
+      left: 1236px;
+      top: 281px;
+      width: 172px;
+      height: 1px;
+      background: rgba(15, 169, 104, 0.5);
+      transform-origin: 0% 50%;
+      opacity: 0;
+    }
+
+    #root .f03-rail {
+      position: absolute;
+      left: 1432px;
+      top: 232px;
+      width: 392px;
+      text-align: left;
+    }
+    #root .f03-k {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 20px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #6A6A62;
+      margin-bottom: 14px;
+      opacity: 0;
+    }
+    #root .f03-v {
+      font-weight: 600;
+      font-size: 34px;
+      line-height: 1.24;
+      letter-spacing: -0.02em;
+      margin-bottom: 22px;
+      opacity: 0;
+    }
+    #root .f03-v .buy { color: #0A7A48; }
+    #root .f03-v .sell { color: #C2402F; }
+    #root .f03-v .num {
+      font-family: 'Geist Mono', monospace;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+  </style>
+
+  <div
+    id="root"
+    data-composition-id="03-decision"
+    data-start="0"
+    data-duration="7"
+    data-width="1920"
+    data-height="1080"
+  >
+    <div class="clip f03-ground" data-start="0" data-duration="7" data-track-index="0"></div>
+
+    <div class="clip f03-viewport" data-start="0" data-duration="7" data-track-index="1" data-layout-allow-overflow>
+      <img class="f03-plate" src="assets/dashboard-still.png" alt="" />
+    </div>
+    <div class="clip f03-card" data-start="0" data-duration="7" data-track-index="2"></div>
+
+    <div class="clip f03-eyebrow" data-start="0" data-duration="7" data-track-index="3">WHICH SIDE THIS TICK?</div>
+
+    <div class="clip f03-rails" data-start="0" data-duration="7" data-track-index="4" style="position: absolute; inset: 0">
+      <div class="f03-rail">
+        <div class="f03-k" id="f03-k1">every tick, one question</div>
+        <div class="f03-v" id="f03-v1"><span class="buy">buy</span> &nbsp;or&nbsp; <span class="sell">sell</span></div>
+        <div class="f03-v" id="f03-v2"><span class="num">62 ms</span>&nbsp;&nbsp;<span>conf <span class="num">0.88</span></span></div>
+      </div>
+    </div>
+
+    <div class="clip f03-leader" data-start="0" data-duration="7" data-track-index="5"></div>
+    <div class="clip f03-ring" data-start="0" data-duration="7" data-track-index="6"></div>
+    <div class="clip f03-tick f03-tick-tl" data-start="0" data-duration="7" data-track-index="7"></div>
+    <div class="clip f03-tick f03-tick-tr" data-start="0" data-duration="7" data-track-index="8"></div>
+    <div class="clip f03-tick f03-tick-bl" data-start="0" data-duration="7" data-track-index="9"></div>
+    <div class="clip f03-tick f03-tick-br" data-start="0" data-duration="7" data-track-index="10"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+
+      // Scene 1 (0.0-1.6s): the surface is simply there and already ticking; only the
+      // frame around it and the eyebrow arrive. Nothing about the product is labelled yet.
+      tl.fromTo('#root .f03-card', { opacity: 0, scale: 1.012 }, { opacity: 1, scale: 1, duration: 0.8, ease: 'power3.out' }, 0.05);
+      tl.fromTo('#root .f03-eyebrow', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 0.35);
+
+      // Scene 2 (1.6-4.2s): the viewfinder lands on the decision panel and the first
+      // cue arrives. One element per cue.
+      tl.fromTo('#root .f03-ring', { opacity: 0, scale: 1.03 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'power3.out' }, 1.65);
+      tl.fromTo('#root .f03-tick', { opacity: 0 }, { opacity: 0.9, duration: 0.4, ease: 'power3.out' }, 1.8);
+      tl.fromTo('#root .f03-leader', { opacity: 0, scaleX: 0 }, { opacity: 1, scaleX: 1, duration: 0.55, ease: 'power3.inOut' }, 1.95);
+      tl.fromTo('#f03-k1', { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.55, ease: 'power3.out' }, 2.2);
+
+      // Scene 3 (4.2-5.6s): the two sides are named on their cue.
+      tl.fromTo('#f03-v1', { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.6, ease: 'power3.out' }, 4.25);
+
+      // Scene 4 (5.6-7.0s): the cost of the decision, then settle and hold.
+      tl.fromTo('#f03-v2', { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.6, ease: 'power3.out' }, 5.65);
+
+      window.__timelines['03-decision'] = tl;
+      tl.seek(0);
+    })();
+  </script>
+</template>

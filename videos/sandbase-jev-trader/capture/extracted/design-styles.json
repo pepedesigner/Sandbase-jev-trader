@@ -1,0 +1,154 @@
+{
+  "typography": [
+    {
+      "role": "code",
+      "fontFamily": "Times New Roman",
+      "fontSize": "16px",
+      "fontWeight": "400",
+      "lineHeight": "normal",
+      "letterSpacing": "normal",
+      "color": "#000000",
+      "sampleText": "SandBase Jev Trader‖ SandBase Jev Tradertick 2,136sim 300 ms"
+    },
+    {
+      "role": "label",
+      "fontFamily": "Inter",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "lineHeight": "19.6px",
+      "letterSpacing": "normal",
+      "color": "#0A0A0A",
+      "sampleText": "342.44"
+    }
+  ],
+  "spacing": {
+    "observed": [
+      4,
+      6,
+      8,
+      10,
+      12,
+      14,
+      16,
+      18,
+      20,
+      22,
+      24
+    ],
+    "baseUnit": 4
+  },
+  "radius": [],
+  "shadows": [],
+  "buttons": [],
+  "cards": [
+    {
+      "label": "card",
+      "background": "#FFFFFF",
+      "backgroundImage": "",
+      "backdropFilter": "",
+      "color": "#0A0A0A",
+      "padding": "0px 0px 16px",
+      "borderRadius": "18px",
+      "border": "1px solid rgb(236, 236, 234)",
+      "boxShadow": "none",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "height": "1048px"
+    },
+    {
+      "label": "card",
+      "background": "#F5F4F1",
+      "backgroundImage": "",
+      "backdropFilter": "",
+      "color": "#0A0A0A",
+      "padding": "0px",
+      "borderRadius": "20px",
+      "border": "0px none rgb(10, 10, 10)",
+      "boxShadow": "none",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "height": "943.203px"
+    },
+    {
+      "label": "card",
+      "background": "transparent",
+      "backgroundImage": "",
+      "backdropFilter": "",
+      "color": "#0A0A0A",
+      "padding": "0px",
+      "borderRadius": "0px",
+      "border": "0px none rgb(10, 10, 10)",
+      "boxShadow": "none",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "height": "429.469px"
+    },
+    {
+      "label": "card",
+      "background": "transparent",
+      "backgroundImage": "",
+      "backdropFilter": "",
+      "color": "#0A0A0A",
+      "padding": "18px",
+      "borderRadius": "0px",
+      "border": "",
+      "boxShadow": "none",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "height": "179.281px"
+    }
+  ],
+  "nav": {
+    "label": "navigation",
+    "background": "transparent",
+    "backgroundImage": "",
+    "backdropFilter": "",
+    "color": "#0A0A0A",
+    "padding": "16px 24px",
+    "borderRadius": "0px",
+    "border": "0px none rgb(10, 10, 10)",
+    "boxShadow": "none",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "height": "60px"
+  },
+  "chips": [
+    {
+      "label": "stand-in model",
+      "background": "#FBEED3",
+      "color": "#8A5B0E",
+      "padding": "7px 12px",
+      "borderRadius": "999px",
+      "border": "0px none rgb(138, 91, 14)",
+      "boxShadow": "none",
+      "fontSize": "12px",
+      "fontWeight": "500",
+      "height": "26px"
+    },
+    {
+      "label": "342.44",
+      "background": "transparent",
+      "color": "#0A0A0A",
+      "padding": "0px",
+      "borderRadius": "0px",
+      "border": "0px none rgb(10, 10, 10)",
+      "boxShadow": "none",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "height": "auto"
+    }
+  ],
+  "statCells": [],
+  "tabs": [],
+  "backgrounds": [
+    {
+      "value": "linear-gradient(rgba(255, 255, 255, 0), rgb(255, 255, 255))",
+      "area": 235414
+    },
+    {
+      "value": "linear-gradient(90deg, rgb(245, 244, 241), rgba(0, 0, 0, 0))",
+      "area": 60365
+    }
+  ],
+  "glass": []
+}

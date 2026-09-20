@@ -1,4 +1,4 @@
-/* ---- Jev Trader design tokens (5e "Eleven", warm-neutral light system) ---- */
+/* ---- SandBase Jev Trader design tokens (warm-neutral light trading desk) ---- */
 :root {
   /* surfaces */
   --bg: #FFFFFF;
@@ -12,7 +12,6 @@
   --ink-2: #3C3C38;
   --muted: #77776F;
   --muted-2: #98968E;
-  --link-muted: #5A5A56;
 
   /* sides */
   --buy: #0FA968;
@@ -24,21 +23,17 @@
   --sell-bar: #F07860;
   --sell-bar-dim: #F9DED6;
 
-  /* block cells + horizon bars */
+  /* tick cells */
   --late: #C98A1B;
   --late-ink: #A16207;
   --late-cell: #F2C063;
   --hold-cell: #E3E1DA;
-  --up-bar: #8FCDAB;
-  --down-bar: #EBAB9E;
-  --link: #7B6ED9;
 
   /* chrome */
-  --badge-jev-bg: #EBE7FC;
-  --badge-jev-fg: #4C3EBB;
+  --badge-model-bg: #EBE7FC;
+  --badge-model-fg: #4C3EBB;
   --badge-standin-bg: #FBEED3;
   --badge-standin-fg: #8A5B0E;
-  --live-dot: #4ADE80;
   --pnl-pos: #0E9F5D;
   --pnl-neg: #DE3B32;
 

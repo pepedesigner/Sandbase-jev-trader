@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { BlockEvent, ConnectionState, Meta } from "@/lib/types";
-import { fmtInt, shortAddr } from "@/lib/format";
+import type { TickEvent, ConnectionState, Meta } from "@/lib/types";
+import { fmtInt } from "@/lib/format";
 import styles from "./Header.module.css";
 
 export interface HeaderProps {
   meta: Meta | null;
-  latest: BlockEvent | null;
+  latest: TickEvent | null;
   connection: ConnectionState;
 }
 
@@ -18,68 +17,45 @@ const OFFLINE_LABEL: Partial<Record<ConnectionState, string>> = {
 };
 
 export default function Header({ meta, latest, connection }: HeaderProps) {
-  const [copied, setCopied] = useState(false);
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(
-    () => () => {
-      if (copyTimer.current) clearTimeout(copyTimer.current);
-    },
-    [],
-  );
-
-  const wallet = meta?.wallet ?? null;
-
-  const onCopy = useCallback(() => {
-    if (!wallet) return;
-    try {
-      void navigator.clipboard?.writeText(wallet)?.catch(() => {});
-    } catch {
-      /* clipboard unavailable, still flash "copied" so the click feels alive */
-    }
-    setCopied(true);
-    if (copyTimer.current) clearTimeout(copyTimer.current);
-    copyTimer.current = setTimeout(() => setCopied(false), 1200);
-  }, [wallet]);
-
   const model = meta?.model ?? null;
-  const isJev = (model ?? "").toLowerCase().startsWith("jev");
+  const standIn = meta?.standIn ?? true;
   const offline = OFFLINE_LABEL[connection] ?? null;
+  const product = meta?.product ?? "SandBase Jev Trader";
 
   return (
     <div className={styles.header}>
-      <span className={styles.brand}>‖ Jev Trader</span>
+      <span className={styles.brand}>&#8214; {product}</span>
 
-      <span className={styles.block}>block {latest ? fmtInt(latest.block) : "-"}</span>
+      <span className={styles.tick}>tick {latest ? fmtInt(latest.tick) : "-"}</span>
 
       <span className={styles.spacer} />
 
       {offline ? <span className={styles.offline}>{offline}</span> : null}
 
-      <button
-        type="button"
-        className={styles.wallet}
-        onClick={onCopy}
-        disabled={!wallet}
-        title={wallet ?? "no wallet, dry run"}
-        aria-label={wallet ? `Copy wallet address ${wallet}` : "Dry run"}
+      <span
+        className={styles.sim}
+        title={`fictional listing, ${meta?.tickMs ?? 300} ms per tick, seed ${meta?.seed ?? "-"}`}
       >
-        {copied ? "copied" : wallet ? shortAddr(wallet) : "dry run"}
-      </button>
+        {meta ? (
+          <>
+            <span>sim {meta.tickMs} ms</span>
+            <span>seed {meta.seed}</span>
+          </>
+        ) : (
+          "sim"
+        )}
+      </span>
 
-      {model ? (
-        <span
-          className={styles.badge}
-          style={{
-            background: isJev
-              ? "var(--badge-jev-bg)"
-              : "var(--badge-standin-bg)",
-            color: isJev ? "var(--badge-jev-fg)" : "var(--badge-standin-fg)",
-          }}
-        >
-          {model}
-        </span>
-      ) : null}
+      <span
+        className={styles.badge}
+        style={{
+          background: standIn ? "var(--badge-standin-bg)" : "var(--badge-model-bg)",
+          color: standIn ? "var(--badge-standin-fg)" : "var(--badge-model-fg)",
+        }}
+        title={standIn ? "no real model is connected: decisions come from a local heuristic" : "decisions come from a hosted model"}
+      >
+        {standIn ? "stand-in model" : model}
+      </span>
     </div>
   );
 }

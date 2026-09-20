@@ -49,8 +49,8 @@
   height: 26px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 18px;
+  gap: 8px;
+  padding: 0 16px;
   white-space: nowrap;
   overflow: hidden;
   font-family: var(--font-mono), "Geist Mono", monospace;
@@ -60,13 +60,15 @@
   font-variant-numeric: tabular-nums;
   background: transparent;
   transition: background 0.5s;
-  animation: feedRowIn 0.25s ease-out both;
+  animation: feedRowIn 0.2s ease-out both;
 }
 
+/* Slide in, but never below half opacity: the newest row is the one a viewer is
+   reading, and it must not look washed out for most of the tick. */
 @keyframes feedRowIn {
   from {
     transform: translateY(-6px);
-    opacity: 0;
+    opacity: 0.5;
   }
   to {
     transform: translateY(0);
@@ -81,23 +83,25 @@
   flex: none;
 }
 
-.block {
-  width: 94px;
+.tick {
+  width: 78px;
   color: var(--muted-2);
 }
 
 .word {
-  width: 42px;
+  width: 40px;
   font-weight: 700;
 }
 
 .conf {
-  width: 72px;
+  width: 38px;
+  text-align: right;
   color: var(--muted-2);
 }
 
 .lat {
-  width: 42px;
+  width: 40px;
+  text-align: right;
   color: var(--muted-2);
 }
 
@@ -106,18 +110,11 @@
   min-width: 0;
 }
 
-.tx {
+.id {
+  width: 82px;
   flex: none;
-  color: var(--link);
-}
-
-.tx a {
-  color: var(--link);
-  text-decoration: none;
-}
-
-.pending {
-  opacity: 0.6;
+  text-align: right;
+  color: var(--muted-2);
 }
 
 .muted {
@@ -128,7 +125,7 @@
   height: 26px;
   display: flex;
   align-items: center;
-  padding: 0 18px;
+  padding: 0 16px;
   font-family: var(--font-mono), "Geist Mono", monospace;
   font-size: 11.5px;
   color: var(--muted-2);
@@ -207,7 +204,7 @@
     padding-right: 12px;
   }
 
-  .block {
+  .tick {
     width: 78px;
   }
 }

@@ -16,24 +16,10 @@
   line-height: 1.2;
   letter-spacing: 0.1em;
   color: var(--muted-2);
-}
-
-.sectionLabelGap {
   margin-bottom: 10px;
 }
 
-/* ---- (1) standing order ---- */
-
-.order {
-  margin-top: 6px;
-  font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace;
-  font-weight: 400;
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--ink-2);
-}
-
-/* ---- (2) the decision: headline + bars ---- */
+/* ---- the decision: headline + bars ---- */
 
 .headline {
   display: flex;
@@ -104,10 +90,101 @@
   font-variant-numeric: tabular-nums;
 }
 
+.footnote {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---- the ladder ---- */
+
+.ladder {
+  display: flex;
+  flex-direction: column;
+}
+
+.ladderRow {
+  position: relative;
+  height: 19px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px;
+  font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  border-radius: 4px;
+}
+
+/* the depth bar, sized to this level's size against the biggest visible one */
+.depth {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  right: 0;
+  border-radius: 3px;
+  transition: width 0.25s linear;
+}
+
+.askRow { color: var(--sell-ink); }
+.bidRow { color: var(--buy-ink); }
+.askRow .depth { background: var(--sell-bar-dim); }
+.bidRow .depth { background: var(--buy-bar-dim); }
+
+/* the touch is the level our quote sits in front of */
+.touch .depth {
+  background: currentColor;
+  opacity: 0.16;
+}
+
+.ladderPx,
+.ladderSz {
+  position: relative;
+  z-index: 1;
+}
+
+.ladderPx {
+  width: 68px;
+  flex: none;
+  font-weight: 500;
+}
+
+.ladderSz {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  color: var(--ink-2);
+}
+
+/* our own quote, one tick inside the touch */
+.ours .depth {
+  background: var(--ink);
+  opacity: 0.14;
+}
+
+.ours .ladderSz {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.ladderEmpty {
+  font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--muted-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .headline,
   .label,
-  .fill {
+  .fill,
+  .depth {
     transition: none;
   }
 }

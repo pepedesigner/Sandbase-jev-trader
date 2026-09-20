@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useReducer } from "react";
-import type { BlockEvent, ConnectionState, FeedState, Fill, Meta, Quote } from "./types";
+import type { ConnectionState, FeedState, Meta, TickEvent } from "./types";
 
 export { useUptime } from "./useUptime";
 
-/** Max block events kept in memory (oldest -> newest). */
+/** Max tick events kept in memory (oldest -> newest). */
 const CAP = 1000;
 /** Reconnect backoff, doubling from 1s up to 10s. */
 const BACKOFF_MIN = 1000;
@@ -20,10 +20,8 @@ interface State extends FeedState {
 }
 
 type Action =
-  | { type: "snapshot"; meta: Meta | null; history: BlockEvent[] }
-  | { type: "block"; event: BlockEvent }
-  | { type: "fill"; block: number; fill: Fill }
-  | { type: "quote"; block: number; quote: Quote }
+  | { type: "snapshot"; meta: Meta | null; history: TickEvent[] }
+  | { type: "tick"; event: TickEvent }
   | { type: "connection"; connection: ConnectionState };
 
 const initialState: State = {
@@ -36,15 +34,15 @@ const initialState: State = {
   latCount: 0,
 };
 
-/** latencyMs of a decided (non-late) block, or null if it should not count. */
-function latencyOf(e: BlockEvent): number | null {
+/** latencyMs of a decided (non-late) tick, or null if it should not count. */
+function latencyOf(e: TickEvent): number | null {
   const d = e?.decision;
   if (!d || d.late || typeof d.latencyMs !== "number" || !Number.isFinite(d.latencyMs)) return null;
   return d.latencyMs;
 }
 
-function indexOfBlock(events: BlockEvent[], block: number): number {
-  for (let i = events.length - 1; i >= 0; i--) if (events[i].block === block) return i;
+function indexOfTick(events: TickEvent[], tick: number): number {
+  for (let i = events.length - 1; i >= 0; i--) if (events[i].tick === tick) return i;
   return -1;
 }
 
@@ -80,15 +78,15 @@ function reducer(state: State, action: Action): State {
       };
     }
 
-    case "block": {
+    case "tick": {
       const ev = action.event;
-      if (!ev || typeof ev.block !== "number") return state;
+      if (!ev || typeof ev.tick !== "number") return state;
       const prev = state.events;
       const last = prev.length ? prev[prev.length - 1] : null;
 
-      // Dedupe: a re-sent block replaces the one we already have; a stale older block is dropped.
-      if (last && ev.block <= last.block) {
-        const idx = indexOfBlock(prev, ev.block);
+      // Dedupe: a re-sent tick replaces the one we already have; a stale older tick is dropped.
+      if (last && ev.tick <= last.tick) {
+        const idx = indexOfTick(prev, ev.tick);
         if (idx < 0) return state;
         const events = prev.slice();
         const old = events[idx];
@@ -144,32 +142,6 @@ function reducer(state: State, action: Action): State {
       };
     }
 
-    case "fill": {
-      const idx = indexOfBlock(state.events, action.block);
-      if (idx < 0) return state;
-      const events = state.events.slice();
-      const updated: BlockEvent = { ...events[idx], fill: action.fill };
-      events[idx] = updated;
-      return {
-        ...state,
-        events,
-        latest: idx === events.length - 1 ? updated : state.latest,
-      };
-    }
-
-    case "quote": {
-      const idx = indexOfBlock(state.events, action.block);
-      if (idx < 0) return state;
-      const events = state.events.slice();
-      const updated: BlockEvent = { ...events[idx], quote: action.quote };
-      events[idx] = updated;
-      return {
-        ...state,
-        events,
-        latest: idx === events.length - 1 ? updated : state.latest,
-      };
-    }
-
     default:
       return state;
   }
@@ -177,22 +149,28 @@ function reducer(state: State, action: Action): State {
 
 function parseMeta(raw: Record<string, unknown> | null): Meta | null {
   if (!raw) return null;
+  const str = (k: string, fallback: string) => (typeof raw[k] === "string" ? (raw[k] as string) : fallback);
+  const num = (k: string, fallback: number) => (typeof raw[k] === "number" ? (raw[k] as number) : fallback);
   return {
-    model: typeof raw.model === "string" ? raw.model : "",
-    wallet: typeof raw.wallet === "string" ? raw.wallet : null,
-    dryRun: Boolean(raw.dryRun),
-    market: typeof raw.market === "string" ? raw.market : "MON/USDC",
-    startedAt: typeof raw.startedAt === "number" ? raw.startedAt : Date.now(),
+    product: str("product", "SandBase Jev Trader"),
+    model: str("model", ""),
+    standIn: Boolean(raw.standIn),
+    symbol: str("symbol", "ANTH"),
+    company: str("company", "Anthropic"),
+    seed: num("seed", 0),
+    tickMs: num("tickMs", 300),
+    tradeSize: num("tradeSize", 200),
+    maxPosition: num("maxPosition", 1000),
+    bankrollUsd: num("bankrollUsd", 100_000),
+    startedAt: num("startedAt", Date.now()),
   };
 }
 
 /**
- * Live block feed over SSE.
+ * Live tick feed over SSE.
  *
  * Connects to `${apiUrl}/events` and handles: `snapshot` (meta + history),
- * `block` (append, deduped by block number, capped at 1000), `quote`
- * ({ block, quote } -> replaces that block's quote once its receipt lands), `fill`
- * ({ block, fill } -> a taker hit our resting order in that block) and `ping` (liveness).
+ * `tick` (append, deduped by tick number, capped at 1000) and `ping` (liveness).
  * Reconnects with 1s -> 10s backoff, surfacing `connection`.
  */
 export function useFeed(apiUrl: string): FeedState {
@@ -266,21 +244,11 @@ export function useFeed(apiUrl: string): FeedState {
 
       handle("snapshot", (data) => {
         const d = (data ?? {}) as Record<string, unknown>;
-        const history = Array.isArray(d.history) ? (d.history as BlockEvent[]) : [];
+        const history = Array.isArray(d.history) ? (d.history as TickEvent[]) : [];
         dispatch({ type: "snapshot", meta: parseMeta(d), history });
       });
-      handle("block", (data) => {
-        dispatch({ type: "block", event: data as BlockEvent });
-      });
-      handle("fill", (data) => {
-        const d = (data ?? {}) as { block?: number; fill?: Fill };
-        if (typeof d.block !== "number" || !d.fill) return;
-        dispatch({ type: "fill", block: d.block, fill: d.fill });
-      });
-      handle("quote", (data) => {
-        const d = (data ?? {}) as { block?: number; quote?: Quote };
-        if (typeof d.block !== "number" || !d.quote) return;
-        dispatch({ type: "quote", block: d.block, quote: d.quote });
+      handle("tick", (data) => {
+        dispatch({ type: "tick", event: data as TickEvent });
       });
       handle("ping", () => {
         dispatch({ type: "connection", connection: "live" });

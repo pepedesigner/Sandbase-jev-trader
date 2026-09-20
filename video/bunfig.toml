@@ -1,0 +1,10 @@
+# Screen capture for the demo videos.
+#
+#   bun install
+#   bun run shot          -> video/shots/dashboard.png
+#   bun run record        -> video/takes/<name>.webm  (then ffmpeg to mp4)
+#
+# Both expect the backend on :3000 and the dashboard on :3001.
+
+[install]
+minimumReleaseAge = 0

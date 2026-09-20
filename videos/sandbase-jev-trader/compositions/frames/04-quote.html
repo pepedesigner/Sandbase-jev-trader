@@ -1,0 +1,189 @@
+<template>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+      src: url('assets/fonts/inter-var.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Geist Mono';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+      src: url('assets/fonts/geist-mono-var.woff2') format('woff2');
+    }
+
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      color: #0A0A0A;
+      -webkit-font-smoothing: antialiased;
+    }
+    #root .f04-ground {
+      position: absolute;
+      inset: 0;
+      background: #F0EEE9;
+    }
+
+    /* the world: a clipped window onto the 2x plate. The plate is transformed
+       inside it, so the travel is a real camera move and stays sharp to 2x. */
+    #root .f04-viewport {
+      position: absolute;
+      left: 96px;
+      top: 150px;
+      width: 1280px;
+      height: 720px;
+      overflow: hidden;
+      border: 1px solid #E5E4DF;
+      border-radius: 20px;
+    }
+    #root .f04-plate {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1280px;
+      height: 720px;
+      transform-origin: 0% 0%;
+      will-change: transform;
+    }
+
+    #root .f04-eyebrow {
+      position: absolute;
+      left: 98px;
+      top: 84px;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 23px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #6A6A62;
+      opacity: 0;
+    }
+
+    /* the callout rail sits over the chart, clear of the column it is describing */
+    #root .f04-scrim {
+      position: absolute;
+      left: 1408px;
+      top: 300px;
+      width: 416px;
+      height: 300px;
+      border-radius: 14px;
+      background: rgba(240, 238, 233, 0.86);
+      opacity: 0;
+    }
+    #root .f04-rail {
+      position: absolute;
+      left: 1432px;
+      top: 336px;
+      width: 392px;
+    }
+    #root .f04-k {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 19px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #6A6A62;
+      margin-bottom: 10px;
+      opacity: 0;
+    }
+    #root .f04-v {
+      font-weight: 600;
+      font-size: 32px;
+      line-height: 1.26;
+      letter-spacing: -0.02em;
+      margin-bottom: 30px;
+      opacity: 0;
+    }
+    #root .f04-v .mono {
+      font-family: 'Geist Mono', monospace;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+    #root .f04-v .sell { color: #C2402F; }
+    #root .f04-v .buy { color: #0A7A48; }
+  </style>
+
+  <div
+    id="root"
+    data-composition-id="04-quote"
+    data-start="0"
+    data-duration="7"
+    data-width="1920"
+    data-height="1080"
+  >
+    <div class="clip f04-ground" data-start="0" data-duration="7" data-track-index="0"></div>
+
+    <div class="clip f04-viewport" data-start="0" data-duration="7" data-track-index="1" data-layout-allow-overflow>
+      <img class="f04-plate" id="f04-plate" src="assets/dashboard-still.png" alt="" />
+    </div>
+
+    <div class="clip f04-eyebrow" data-start="0" data-duration="7" data-track-index="2">THE CALL BECOMES AN ORDER</div>
+
+    <div class="clip f04-scrim" data-start="0" data-duration="7" data-track-index="3"></div>
+
+    <div class="clip f04-railwrap" data-start="0" data-duration="7" data-track-index="4" style="position: absolute; inset: 0">
+      <div class="f04-rail">
+        <div class="f04-k" id="f04-k1">standing order</div>
+        <div class="f04-v" id="f04-v1">post-only, <span class="mono">1</span> tick inside the touch</div>
+        <div class="f04-k" id="f04-k2">our quote</div>
+        <div class="f04-v" id="f04-v2">the best price on that side</div>
+        <div class="f04-k" id="f04-k3">next tick</div>
+        <div class="f04-v" id="f04-v3">cancelled and replaced</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+
+      // Travel targets, solved for the plate's scale about its own top-left so the
+      // named region lands dead-centre in the clipped window.
+      var W = 1280;
+      var H = 720;
+      var CX = 640;
+      var CY = 360;
+      function at(cx, cy, s) {
+        return { x: CX - cx * W * s, y: CY - cy * H * s, scale: s };
+      }
+      // regions read off the plate: the right column's three panels
+      var WIDE = at(0.5, 0.5, 1);
+      var DECISION = at(0.742, 0.171, 2);
+      var TAPE = at(0.742, 0.737, 2);
+
+      tl.set('#f04-plate', { x: WIDE.x, y: WIDE.y, scale: WIDE.scale, transformOrigin: '0% 0%' }, 0);
+
+      // Scene 1 (0.0-1.5s): the whole instrument, held wide. The eyebrow arrives.
+      tl.fromTo('#root .f04-eyebrow', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 0.3);
+
+      // Scene 2 (1.5-3.8s): leg one - down the right column onto the decision panel,
+      // where the quote is priced. The callouts arrive on their own cues.
+      tl.to('#f04-plate', { x: DECISION.x, y: DECISION.y, scale: DECISION.scale, duration: 1.5, ease: 'power2.inOut' }, 1.5);
+      tl.fromTo('#root .f04-scrim', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power3.out' }, 2.3);
+      tl.fromTo('#f04-k1', { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.45, ease: 'power3.out' }, 2.35);
+      tl.fromTo('#f04-v1', { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' }, 2.6);
+      tl.fromTo('#f04-k2', { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.45, ease: 'power3.out' }, 3.5);
+      tl.fromTo('#f04-v2', { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' }, 3.72);
+
+      // Scene 3 (3.8-5.6s): leg two - down to the tape, where fills print.
+      tl.to('#f04-plate', { x: TAPE.x, y: TAPE.y, scale: TAPE.scale, duration: 1.25, ease: 'power2.inOut' }, 3.9);
+      tl.fromTo('#f04-k3', { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.45, ease: 'power3.out' }, 5.0);
+      tl.fromTo('#f04-v3', { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' }, 5.22);
+
+      // Scene 4 (5.6-7.0s): the camera eases back out to the whole desk and rests.
+      tl.to('#f04-plate', { x: WIDE.x, y: WIDE.y, scale: WIDE.scale, duration: 1.15, ease: 'power2.inOut' }, 5.6);
+      tl.to('#root .f04-scrim', { opacity: 0, duration: 0.5, ease: 'power2.in' }, 5.7);
+      tl.to('#root .f04-railwrap', { opacity: 0, duration: 0.5, ease: 'power2.in' }, 5.7);
+
+      window.__timelines['04-quote'] = tl;
+      tl.seek(0);
+    })();
+  </script>
+</template>

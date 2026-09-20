@@ -1,0 +1,295 @@
+<template>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+      src: url('assets/fonts/inter-var.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Geist Mono';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+      src: url('assets/fonts/geist-mono-var.woff2') format('woff2');
+    }
+
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      color: #0A0A0A;
+      -webkit-font-smoothing: antialiased;
+    }
+    #root .f05-ground {
+      position: absolute;
+      inset: 0;
+      background: #F0EEE9;
+    }
+
+    #root .f05-eyebrow {
+      position: absolute;
+      left: 230px;
+      top: 132px;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 23px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #6A6A62;
+      opacity: 0;
+    }
+
+    /* the hero metric */
+    #root .f05-hero {
+      position: absolute;
+      left: 222px;
+      top: 196px;
+      font-weight: 700;
+      font-size: 244px;
+      line-height: 0.94;
+      letter-spacing: -0.045em;
+      font-variant-numeric: tabular-nums;
+      transform-origin: 0% 60%;
+      opacity: 0;
+    }
+    #root .f05-herolabel {
+      position: absolute;
+      left: 232px;
+      top: 462px;
+      font-weight: 500;
+      font-size: 30px;
+      color: #77776F;
+      opacity: 0;
+    }
+    #root .f05-rule {
+      position: absolute;
+      left: 232px;
+      top: 528px;
+      height: 4px;
+      width: 0;
+      background: #0FA968;
+    }
+
+    /* the three-up stat row, weighted so it does not read as a grid */
+    #root .f05-stats {
+      position: absolute;
+      left: 232px;
+      top: 590px;
+      display: flex;
+      align-items: flex-start;
+      gap: 76px;
+    }
+    #root .f05-stat { opacity: 0; }
+    #root .f05-stat-v {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 66px;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    #root .f05-stat-k {
+      margin-top: 14px;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 19px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #6A6A62;
+    }
+
+    /* the P&L instrument */
+    #root .f05-pnl {
+      position: absolute;
+      left: 1108px;
+      top: 210px;
+      width: 596px;
+      padding: 30px 32px 26px;
+      border: 1px solid #E5E4DF;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.6);
+      opacity: 0;
+    }
+    #root .f05-pnl-k {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 19px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #6A6A62;
+    }
+    #root .f05-pnl-v {
+      margin-top: 16px;
+      display: flex;
+      align-items: baseline;
+      gap: 20px;
+    }
+    #root .f05-pnl-main {
+      font-weight: 700;
+      font-size: 78px;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+      color: #0E9F5D;
+    }
+    #root .f05-pnl-pct {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 34px;
+      color: #0E9F5D;
+      font-variant-numeric: tabular-nums;
+    }
+    #root .f05-pnl-note {
+      margin-top: 18px;
+      font-size: 21px;
+      line-height: 1.4;
+      color: #77776F;
+    }
+    #root .f05-spark { margin-top: 8px; }
+
+    /* the supporting plate: a crop of the tape, as evidence, at 40% */
+    #root .f05-plateclip {
+      position: absolute;
+      left: 1108px;
+      top: 500px;
+      width: 596px;
+      height: 268px;
+      overflow: hidden;
+      border-radius: 14px;
+      opacity: 0;
+    }
+    #root .f05-plate {
+      position: absolute;
+      left: -1379px;
+      top: -316px;
+      width: 2310px;
+      height: 608px;
+    }
+
+    #root .f05-foot {
+      position: absolute;
+      left: 232px;
+      top: 838px;
+      display: flex;
+      gap: 28px;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 21px;
+      letter-spacing: 0.06em;
+      color: #6A6A62;
+      opacity: 0;
+    }
+  </style>
+
+  <div
+    id="root"
+    data-composition-id="05-numbers"
+    data-start="0"
+    data-duration="7"
+    data-width="1920"
+    data-height="1080"
+  >
+    <div class="clip f05-ground" data-start="0" data-duration="7" data-track-index="0"></div>
+
+    <div class="clip f05-eyebrow" data-start="0" data-duration="7" data-track-index="1">WHAT IT DID</div>
+
+    <div class="clip f05-hero" data-start="0" data-duration="7" data-track-index="2" id="f05-hero">0</div>
+    <div class="clip f05-herolabel" data-start="0" data-duration="7" data-track-index="3">decisions this run</div>
+    <div class="clip f05-rule" data-start="0" data-duration="7" data-track-index="4"></div>
+
+    <div class="clip f05-stats" data-start="0" data-duration="7" data-track-index="5">
+      <div class="f05-stat" id="f05-s1">
+        <div class="f05-stat-v">740</div>
+        <div class="f05-stat-k">fills</div>
+      </div>
+      <div class="f05-stat" id="f05-s2">
+        <div class="f05-stat-v">43 ms</div>
+        <div class="f05-stat-k">average</div>
+      </div>
+      <div class="f05-stat" id="f05-s3">
+        <div class="f05-stat-v">1.17 bps</div>
+        <div class="f05-stat-k">spread</div>
+      </div>
+    </div>
+
+    <div class="clip f05-plateclip" data-start="0" data-duration="7" data-track-index="6">
+      <img class="f05-plate" src="assets/dashboard-still.png" alt="" />
+    </div>
+
+    <div class="clip f05-pnl" data-start="0" data-duration="7" data-track-index="7">
+      <div class="f05-pnl-k">profit and loss</div>
+      <div class="f05-pnl-v">
+        <span class="f05-pnl-main">+$892.41</span>
+        <span class="f05-pnl-pct">+0.89%</span>
+      </div>
+      <svg class="f05-spark" width="532" height="46" viewBox="0 0 532 46" fill="none" aria-hidden="true">
+        <path
+          id="f05-sparkpath"
+          d="M2 40 L58 34 L114 36 L170 27 L226 29 L282 20 L338 22 L394 13 L450 9 L530 3"
+          stroke="#0E9F5D"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <div class="f05-pnl-note">shown whether it is up or down.</div>
+    </div>
+
+    <div class="clip f05-foot" data-start="0" data-duration="7" data-track-index="8">
+      <span>tick 1,968</span><span>seed 20260920</span><span>00:09:50 elapsed</span>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+
+      // Scene 1 (0.0-1.8s): the hero metric is the whole frame. It counts up as the
+      // line reaches it, and its size grows with the value.
+      tl.fromTo('#root .f05-eyebrow', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 0.05);
+      var counter = { v: 0 };
+      tl.fromTo('#root .f05-hero', { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 1.25, ease: 'power3.out' }, 0.15);
+      tl.to(
+        counter,
+        {
+          v: 1968,
+          duration: 1.25,
+          ease: 'power3.out',
+          onUpdate: function () {
+            document.getElementById('f05-hero').textContent = Math.round(counter.v).toLocaleString('en-US');
+          },
+        },
+        0.15
+      );
+      tl.fromTo('#root .f05-herolabel', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 0.62);
+      tl.fromTo('#root .f05-rule', { width: 0 }, { width: 300, duration: 0.7, ease: 'power3.inOut' }, 0.95);
+
+      // Scene 2 (1.8-3.8s): the three-up row builds left to right, one per cue.
+      tl.fromTo('#f05-s1', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 1.85);
+      tl.fromTo('#f05-s2', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 2.55);
+      tl.fromTo('#f05-s3', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 3.2);
+
+      // Scene 3 (3.8-5.6s): the P&L card lands and its line traces left to right.
+      tl.fromTo('#root .f05-pnl', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.65, ease: 'power3.out' }, 3.85);
+      tl.fromTo(
+        '#f05-sparkpath',
+        { strokeDasharray: 900, strokeDashoffset: 900 },
+        { strokeDashoffset: 0, duration: 0.95, ease: 'power3.inOut' },
+        4.25
+      );
+
+      // Scene 4 (5.6-7.0s): the evidence plate fades up behind, then the footnote lands
+      // and the whole frame settles still.
+      tl.fromTo('#root .f05-plateclip', { opacity: 0 }, { opacity: 0.4, duration: 0.7, ease: 'power2.out' }, 5.55);
+      tl.fromTo('#root .f05-foot', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 6.05);
+
+      window.__timelines['05-numbers'] = tl;
+      tl.seek(0);
+    })();
+  </script>
+</template>

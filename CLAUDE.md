@@ -112,14 +112,22 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 
 ## The core message (do not break this)
 
-The demo exists to support this tweet. Every design or strategy change must keep all four claims true:
+Every design or strategy change must keep all three claims true:
 
-> I built a trading bot with Jev!
+> The model decides buy or sell, given the order book of an instrument, and the
+> desk posts an order from that decision.
 >
-> Jev decides if it should "buy" or "sell", given the price feed of an asset pair, and executes real trades.
+> It posts one post-only limit order every 300 ms tick, one tick inside the touch.
 >
-> It uses Monad to place the orders on Kuru's on-chain order book in every 300ms block.
->
-> Demo link: https://jev-trader.vercel.app
+> The dashboard is the demo, and it streams every tick live.
 
-Non-negotiables: Jev makes the buy/sell call (not code), from the price feed; real trades from a real wallet; an order placed on Kuru's on-chain book every 300 ms block; the demo is the live dashboard. Never decide every N blocks. No middle dots, em dashes or en dashes in any rendered text. No blinking or pulsing indicators.
+Non-negotiables: the model makes the buy/sell call (not code), from the book and
+flow; one order every tick, never every N ticks; the numbers on screen are the
+numbers the run produced. And, because the instrument is fictional: the dashboard
+labels the listing as simulated and labels a non-hosted model as a stand-in.
+Never imply a real Anthropic share price exists.
+
+No middle dots, em dashes or en dashes in any rendered text. No blinking or
+pulsing indicators. No lazy breathing or back-half camera drift to fake
+aliveness. Nothing in a rendered frame may sit in the bottom 17% (the caption
+band).

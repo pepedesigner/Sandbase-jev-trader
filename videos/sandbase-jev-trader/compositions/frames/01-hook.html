@@ -1,0 +1,171 @@
+<template>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+      src: url('assets/fonts/inter-var.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Geist Mono';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+      src: url('assets/fonts/geist-mono-var.woff2') format('woff2');
+    }
+
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      color: #0A0A0A;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #root .f01-ground {
+      position: absolute;
+      inset: 0;
+      background: #F0EEE9;
+    }
+
+    /* the one depth layer: an outsized numeral sitting behind the anchor */
+    #root .f01-ghost {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 268px;
+      text-align: center;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 600;
+      font-size: 470px;
+      line-height: 1;
+      letter-spacing: -0.07em;
+      color: #0A0A0A;
+      opacity: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* the anchor: one clause at a time, dead centre */
+    #root .f01-anchor {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 452px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 96px;
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+    }
+    #root .f01-clause {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      opacity: 0;
+    }
+
+    /* the resolved lockup: three lines on the left thirds, with a rule beneath */
+    #root .f01-stack {
+      position: absolute;
+      left: 230px;
+      top: 356px;
+      width: 1160px;
+      opacity: 0;
+    }
+    #root .f01-line {
+      font-weight: 600;
+      font-size: 88px;
+      line-height: 1.16;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+    }
+    #root .f01-num {
+      font-family: 'Geist Mono', monospace;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+      font-size: 80px;
+    }
+    #root .f01-rule {
+      height: 4px;
+      width: 0;
+      background: #0FA968;
+      margin-top: 38px;
+    }
+    #root .f01-foot {
+      display: flex;
+      gap: 22px;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 500;
+      font-size: 22px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #6A6A62;
+      margin-top: 28px;
+      opacity: 0;
+    }
+  </style>
+
+  <div
+    id="root"
+    data-composition-id="01-hook"
+    data-start="0"
+    data-duration="4"
+    data-width="1920"
+    data-height="1080"
+  >
+    <div class="clip f01-ground" data-start="0" data-duration="4" data-track-index="0"></div>
+
+    <div class="clip f01-ghost" data-start="0" data-duration="4" data-track-index="1">300</div>
+
+    <div class="clip f01-anchor" data-start="0" data-duration="4" data-track-index="2">
+      <div class="f01-clause" id="f01-c1">Three hundred milliseconds.</div>
+      <div class="f01-clause" id="f01-c2">One decision.</div>
+      <div class="f01-clause" id="f01-c3">One order.</div>
+    </div>
+
+    <div class="clip f01-stack" data-start="0" data-duration="4" data-track-index="3">
+      <div class="f01-line">Every <span class="f01-num">300 ms</span>,</div>
+      <div class="f01-line">one decision,</div>
+      <div class="f01-line">one order.</div>
+      <div class="f01-rule"></div>
+      <div class="f01-foot"><span>ANTH/USD</span><span>simulated book</span></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+      var ghost = '#f01-ghost';
+
+      // Scene 1 (0.0-1.3s): the first clause and the ghost numeral are the whole frame.
+      tl.fromTo('#f01-c1', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.62, ease: 'power3.out' }, 0);
+      tl.fromTo(ghost, { opacity: 0, scale: 0.95, transformOrigin: '50% 50%' }, { opacity: 0.055, scale: 1, duration: 0.95, ease: 'power3.out' }, 0);
+
+      // Scene 2 (1.3-2.7s): the anchor clears, then each swap is a hard cut on its spoken cue.
+      tl.to('#f01-c1', { opacity: 0, y: -26, duration: 0.2, ease: 'power2.in' }, 1.3);
+      tl.set('#f01-c1', { opacity: 0 }, 1.5);
+      tl.set('#f01-c2', { opacity: 1 }, 1.5);
+      tl.set(ghost, { textContent: '1' }, 1.5);
+      tl.fromTo(ghost, { opacity: 0 }, { opacity: 0.055, duration: 0.16, ease: 'none' }, 1.5);
+
+      tl.set('#f01-c2', { opacity: 0 }, 2.18);
+      tl.set('#f01-c3', { opacity: 1 }, 2.18);
+      tl.fromTo(ghost, { opacity: 0 }, { opacity: 0.055, duration: 0.16, ease: 'none' }, 2.18);
+
+      // Scene 3 (2.7-4.0s): the clauses resolve into one stacked lockup and the rule wipes in.
+      tl.to('#f01-anchor', { opacity: 0, duration: 0.22, ease: 'power2.in' }, 2.68);
+      tl.to(ghost, { opacity: 0, duration: 0.36, ease: 'power2.in' }, 2.68);
+      tl.fromTo('#f01-stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, 2.8);
+      tl.fromTo('#f01-rule', { width: 0 }, { width: 360, duration: 0.74, ease: 'power3.inOut' }, 3.0);
+      tl.fromTo('#f01-foot', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power3.out' }, 3.32);
+
+      window.__timelines['01-hook'] = tl;
+      tl.seek(0);
+    })();
+  </script>
+</template>

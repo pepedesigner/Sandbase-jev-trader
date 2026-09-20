@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { BlockEvent } from "@/lib/types";
-import { fmtInt, fmtPrice, shortTx, txUrl } from "@/lib/format";
+import type { TickEvent } from "@/lib/types";
+import { fmtInt, fmtPrice, fmtShares } from "@/lib/format";
 import styles from "./Feed.module.css";
 
 /** Must match `.row { height }` in Feed.module.css. */
@@ -12,16 +12,12 @@ const MAX_ROWS = 40;
 
 type Kind = "buy" | "sell" | "late";
 
-function kindOf(event: BlockEvent): Kind {
+function kindOf(event: TickEvent): Kind {
   const d = event.decision;
   if (!d || d.late) return "late";
   if (d.action === "buy") return "buy";
   if (d.action === "sell") return "sell";
   return "late";
-}
-
-function fmtSize(size: number): string {
-  return size.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 const KIND_CLASS: Record<Kind, string> = {
@@ -33,12 +29,12 @@ const KIND_CLASS: Record<Kind, string> = {
 const WORD: Record<Kind, string> = { buy: "BUY", sell: "SELL", late: "LATE" };
 
 /**
- * One row per block. The word is the side the model picked, the detail is the order that went on
- * the book (bid or ask at its price), and when a taker hit one of our orders in that block the
- * detail becomes the fill instead. The tx column is the order's transaction: dim while pending,
- * "rev" if the book moved through the price before it landed.
+ * One row per tick. The word is the side the model picked, the detail is the
+ * order that went on the book (a bid or an ask, at its price), and when a taker
+ * hit our order in that tick the detail becomes the fill instead. The last
+ * column is the resting order id.
  */
-export default function Feed({ events }: { events: BlockEvent[] }) {
+export default function Feed({ events }: { events: TickEvent[] }) {
   const listRef = useRef<HTMLDivElement | null>(null);
   // How many whole 26px rows fit in the box the layout gives us. The list
   // itself clips, so a wrong guess is never a half-drawn row, only a hidden one.
@@ -64,10 +60,10 @@ export default function Feed({ events }: { events: BlockEvent[] }) {
 
   return (
     <section className={styles.feed}>
-      <div className={styles.label}>FEED</div>
+      <div className={styles.label}>TAPE</div>
       <div className={styles.list} ref={listRef}>
         {rows.length === 0 ? (
-          <div className={styles.empty}>no blocks yet</div>
+          <div className={styles.empty}>no ticks yet</div>
         ) : (
           rows.map((event, i) => {
             const kind = kindOf(event);
@@ -77,28 +73,22 @@ export default function Feed({ events }: { events: BlockEvent[] }) {
             const decided = kind !== "late";
             const kindClass = KIND_CLASS[kind];
 
-            const conf =
-              !decided || !decision
-                ? ""
-                : "conf " +
-                  Math.max(
-                    decision.probabilities.buy,
-                    decision.probabilities.sell,
-                    decision.probabilities.hold,
-                  ).toFixed(2);
+            const conf = !decided || !decision ? "" : Math.max(
+              decision.probabilities.buy,
+              decision.probabilities.sell,
+              decision.probabilities.hold,
+            ).toFixed(2);
 
             const lat = !decided || !decision ? "" : `${decision.latencyMs}ms`;
 
             let detail = "";
             let detailMuted = false;
             if (fill && fill.size > 0) {
-              detail = `FILL ${fmtSize(fill.size)} @ ${fmtPrice(fill.price)}`;
+              detail = `FILL ${fmtShares(fill.size)} @ ${fmtPrice(fill.price)}`;
             } else if (decided && quote) {
-              const word = quote.side === "buy" ? "bid" : "ask";
-              detail = `${word} ${fmtSize(quote.size)} @ ${fmtPrice(quote.price)}${quote.capped ? " cap" : ""}`;
-              detailMuted = quote.status === "reverted" || quote.status === "lost";
+              detail = `${quote.side === "buy" ? "bid" : "ask"} ${fmtShares(quote.size)} @ ${fmtPrice(quote.price)}${quote.capped ? " cap" : ""}`;
             } else if (decided) {
-              detail = "no quote";
+              detail = "no order";
               detailMuted = true;
             }
 
@@ -107,34 +97,16 @@ export default function Feed({ events }: { events: BlockEvent[] }) {
               .join(" ");
 
             return (
-              <div key={event.block} className={rowClass}>
-                <span className={`${styles.cell} ${styles.block}`}>{fmtInt(event.block)}</span>
+              <div key={event.tick} className={rowClass}>
+                <span className={`${styles.cell} ${styles.tick}`}>{fmtInt(event.tick)}</span>
                 <span className={`${styles.cell} ${styles.word}`}>{WORD[kind]}</span>
                 <span className={`${styles.cell} ${styles.conf}`}>{conf}</span>
                 <span className={`${styles.cell} ${styles.lat}`}>{lat}</span>
-                <span
-                  className={`${styles.cell} ${styles.detail}${detailMuted ? ` ${styles.muted}` : ""}`}
-                >
+                <span className={`${styles.cell} ${styles.detail}${detailMuted ? ` ${styles.muted}` : ""}`}>
                   {detail}
                 </span>
-                <span className={`${styles.cell} ${styles.tx}`}>
-                  {fill && !fill.simulated && fill.txHash ? (
-                    <a href={txUrl(fill.txHash)} target="_blank" rel="noreferrer" title="the taker's transaction">
-                      {shortTx(fill.txHash)}
-                    </a>
-                  ) : quote && quote.status === "sim" ? (
-                    <span className={styles.muted}>sim</span>
-                  ) : quote && quote.txHash ? (
-                    <a
-                      className={quote.status === "sent" ? styles.pending : quote.status === "placed" ? undefined : styles.muted}
-                      title={quote.status}
-                      href={txUrl(quote.txHash)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {quote.status === "reverted" ? "rev" : quote.status === "lost" ? "lost" : shortTx(quote.txHash)}
-                    </a>
-                  ) : null}
+                <span className={`${styles.cell} ${styles.id}`}>
+                  {quote ? `#${quote.orderId}` : null}
                 </span>
               </div>
             );

@@ -1,0 +1,12 @@
+{
+  "name": "sandbase-jev-trader-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "shot": "bun run shot.mjs",
+    "capture": "bun run capture.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}
