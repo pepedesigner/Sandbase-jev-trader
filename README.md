@@ -1,5 +1,7 @@
 # SandBase Jev Trader
 
+English | [中文](README.zh.md)
+
 One decision every 300 ms tick. An AI model watches a simulated Anthropic
 order book and answers buy or sell. Every tick it posts one post-only limit
 order on that side, one tick inside the touch, replacing the last one. Fills
